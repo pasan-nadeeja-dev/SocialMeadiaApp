@@ -4,7 +4,7 @@ const { UserInputError } = require("apollo-server");
 
 const User = require("../../../models/User");
 const { registerInputValidator } = require("../../../util/validator");
-const { JWT_SECRET } = require("../../../config");
+const { genToken } = require("../../../util/genToken");
 
 module.exports.userRegister = async (
   _,
@@ -18,7 +18,6 @@ module.exports.userRegister = async (
     email
   );
   if (!valid) {
-    console.log("validation failed");
     throw new UserInputError("Input errors", errors);
   }
   //make sure user doesn't exist
@@ -48,15 +47,7 @@ module.exports.userRegister = async (
   });
   const result = await newUser.save();
   //generate token
-  const token = jwt.sign(
-    {
-      id: result._id,
-      email: result.email,
-      username: result.username,
-    },
-    JWT_SECRET,
-    { expiresIn: "1h" }
-  );
+  const token = genToken(result);
   //   return response (newly created user, token)
   return {
     ...result._doc,
