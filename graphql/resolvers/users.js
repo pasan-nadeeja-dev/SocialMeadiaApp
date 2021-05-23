@@ -3,15 +3,26 @@ const jwt = require("jsonwebtoken");
 const { UserInputError } = require("apollo-server");
 
 const User = require("../../models/User");
+const { registerInputValidator } = require("../../util/validator");
 const { JWT_SECRET } = require("../../config");
 
 module.exports = {
   Mutation: {
     async register(
       _,
-      { registerInput: { username, password, confirmPassword, email } },
+      { registerInput: { username, password, confirmPassword, email } }
     ) {
       //validate values from server side
+      const { valid, errors } = registerInputValidator(
+        username,
+        password,
+        confirmPassword,
+        email
+      );
+      if (!valid) {
+        console.log("validation failed");
+        throw new UserInputError("Input errors", errors);
+      }
       //make sure user doesn't exist
       const existingUser = await User.findOne(
         {
@@ -19,33 +30,26 @@ module.exports = {
         },
         { username: 1, email: 1 }
       );
-      console.log(existingUser);
-      if (existingUser && existingUser.username === username) {
-        throw new UserInputError("Username is taken", {
-          errors: {
-            username: "This username is taken",
-          },
-        });
-      }
-      if (existingUser && existingUser.email === email) {
-        throw new UserInputError("email is taken", {
-          errors: {
-            email: "This email is taken",
-          },
-        });
+      if (existingUser) {
+        if (existingUser.username === username) {
+          errors.username = "Username is taken";
+        }
+        if (existingUser.email === email) {
+          errors.email = "Email is taken";
+        }
+        throw new UserInputError("Errors", errors);
       }
       //hash the password
       const hashPassword = await bcrypt.hash(password, 12);
       //save to db
       const newUser = new User({
         username,
-        hashPassword,
+        password: hashPassword,
         email,
         createdAt: new Date().toISOString(),
       });
       const result = await newUser.save();
       //generate token
-      //   console.log("new user : ", result);
       const token = jwt.sign(
         {
           id: result._id,
