@@ -55,3 +55,11 @@ module.exports.loginInputValidator = (username, password) => {
   }
   return validateResponse(errors);
 };
+
+module.exports.createPostValidator = (body) => {
+  const errors = {};
+  if (body.trim() === "") {
+    errors.body = "Body must not be empty";
+  }
+  return validateResponse(errors);
+};
